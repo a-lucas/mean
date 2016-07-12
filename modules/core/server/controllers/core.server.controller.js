@@ -1,6 +1,11 @@
 'use strict';
 
 var validator = require('validator');
+var swig = require('swig');
+var path = require('path');
+var AngularServer = require('angular.js-server');
+var config = require(path.resolve('config/env/pre-render'));
+var angularServer = new AngularServer(config);
 
 /**
  * Render the main application page
@@ -23,9 +28,25 @@ exports.renderIndex = function (req, res) {
     };
   }
 
-  res.render('modules/core/server/views/index', {
-    user: safeUserObject
+  var tpl = swig.compileFile('modules/core/server/views/index.server.view.html', {
+    cache: false
   });
+
+  var params = {
+    user: safeUserObject
+  };
+  params = Object.assign(params, req.locals);
+
+  var prehtml = tpl(params);
+
+  var html = angularServer.render(prehtml, req.url);
+
+  html.then(function(result) {
+    res.send(result);;
+  }).fail(function(err) {
+    res.send(err);
+  });
+
 };
 
 /**
